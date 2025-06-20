@@ -1,6 +1,20 @@
 --!native
 --!strict
 --optimize 2
+local BYTE = 0b10 ^ 8
+local VLQINPMASK0 = (0b10 ^ 7) ^ 1
+local VLQINPMASK1 = (0b10 ^ 7) ^ 2
+local VLQINPMASK2 = (0b10 ^ 7) ^ 3
+local VLQINPMASK3 = (0b10 ^ 7) ^ 4
+local VLQINPMASK4 = (0b10 ^ 7) ^ 5
+local VLQINPMASK5 = (0b10 ^ 7) ^ 6
+local VLQINPMASK6 = (0b10 ^ 7) ^ 7
+local VLQINPMASK7 = (0b10 ^ 7) ^ 8
+local VLQOUTMASK0 = VLQINPMASK0 * BYTE ^ 0
+local VLQOUTMASK1 = VLQOUTMASK0 + VLQINPMASK0 * BYTE ^ 1
+local VLQOUTMASK2 = VLQOUTMASK1 + VLQINPMASK0 * BYTE ^ 2
+local VLQOUTMASK3 = VLQOUTMASK2 + VLQINPMASK0 * BYTE ^ 3
+local VLQOUTMASK4 = VLQOUTMASK3 + VLQINPMASK0 * BYTE ^ 4
 
 local ByteWorks = {}
 
@@ -286,42 +300,225 @@ ByteWorks.f64 = table.freeze({
 
 --variable length unsigned integers
 ByteWorks.vlq = table.freeze({
-	ser = function(buff, offset, value)
-		repeat
-			local byte: number = bit32.band(value, 0x7F) 
-			value = bit32.rshift(value, 7)
-			if value > 0 then
-				byte = bit32.bor(byte, 0x80)
-			end
-			buffer.writeu8(buff, offset, byte)
-			offset += 1
-		until value == 0
+	ser = function(buff: buffer, offset: number, value: any)
+		if value >= VLQINPMASK0 then
+			if value >= VLQINPMASK1 then
+				if value >= VLQINPMASK2 then
+					if value >= VLQINPMASK3 then
+						if value >= VLQINPMASK4 then
+							if value >= VLQINPMASK5 then
+								if value >= VLQINPMASK6 then
+									if value >= VLQINPMASK7 then
+										--stylua: ignore
+										error(debug.traceback(
+											`Invalid vlq serialized: Expected value < {VLQINPMASK7}`,
+											2
+										), -1)
+									end
+									local target_ptr = offset + 8
+									local output = VLQOUTMASK3
+									local sep = value % VLQINPMASK0
+									value -= sep
+									output += sep
+									sep = value % VLQINPMASK1
+									value -= sep
+									output += sep * 0b10 ^ 1
+									sep = value % VLQINPMASK2
+									value -= sep
+									output += sep * 0b10 ^ 2
+									sep = value % VLQINPMASK3
+									output += sep * 0b10 ^ 3
+									buffer.writeu32(buff, offset, output)
+									offset += 4
 
-		return offset
+									value //= VLQINPMASK3
+									output = VLQOUTMASK2
+
+									output = VLQOUTMASK2
+									sep = value % VLQINPMASK0
+									value -= sep
+									output += sep
+									sep = value % VLQINPMASK1
+									value -= sep
+									output += sep * 0b10 ^ 1
+									sep = value % VLQINPMASK2
+									value -= sep
+									output += sep * 0b10 ^ 2
+									sep = value % VLQINPMASK3
+									output += sep * 0b10 ^ 3
+									buffer.writeu32(buff, offset, output)
+									
+									return target_ptr
+								end
+								local target_ptr = offset + 7
+								local output = VLQOUTMASK3
+								local sep = value % VLQINPMASK0
+								value -= sep
+								output += sep
+								sep = value % VLQINPMASK1
+								value -= sep
+								output += sep * 0b10 ^ 1
+								sep = value % VLQINPMASK2
+								value -= sep
+								output += sep * 0b10 ^ 2
+								sep = value % VLQINPMASK3
+								output += sep * 0b10 ^ 3
+								buffer.writeu32(buff, offset, output)
+								offset += 4
+
+								value //= VLQINPMASK3
+								output = VLQOUTMASK2
+
+								output = VLQOUTMASK1
+								sep = value % VLQINPMASK0
+								output += sep
+								value -= sep
+								sep = value % VLQINPMASK1
+								value -= sep
+								output += sep * 0b10 ^ 1
+								output += value * 0b10 ^ 2
+								buffer.writeu16(buff, offset, output)
+								offset += 2
+								output /= 2 ^ 16
+								buffer.writeu8(buff, offset, output)
+
+								return target_ptr
+							end
+							local target_ptr = offset + 6
+							local output = VLQOUTMASK4
+							local sep = value % VLQINPMASK0
+							value -= sep
+							output += sep
+							sep = value % VLQINPMASK1
+							value -= sep
+							output += sep * 0b10 ^ 1
+							sep = value % VLQINPMASK2
+							value -= sep
+							output += sep * 0b10 ^ 2
+							sep = value % VLQINPMASK3
+							value -= sep
+							output += sep * 0b10 ^ 3
+							sep = value % VLQINPMASK4
+							value -= sep
+							output += sep * 0b10 ^ 4
+							output += value * 0b10 ^ 5
+							buffer.writeu32(buff, offset, output)
+							offset += 4
+							output /= 2 ^ 32
+							buffer.writeu16(buff, offset, output)
+							return target_ptr
+						end
+						local target_ptr = offset + 5
+						local output = VLQOUTMASK3
+						local sep = value % VLQINPMASK0
+						value -= sep
+						output += sep
+						sep = value % VLQINPMASK1
+						value -= sep
+						output += sep * 0b10 ^ 1
+						sep = value % VLQINPMASK2
+						value -= sep
+						output += sep * 0b10 ^ 2
+						sep = value % VLQINPMASK3
+						value -= sep
+						output += sep * 0b10 ^ 3
+						output += value * 0b10 ^ 4
+						buffer.writeu32(buff, offset, output)
+						offset += 4
+						output /= 2 ^ 32
+						buffer.writeu8(buff, offset, output)
+						return target_ptr
+					end
+					local target_ptr = offset + 4
+					local output = VLQOUTMASK2
+					local sep = value % VLQINPMASK0
+					value -= sep
+					output += sep
+					sep = value % VLQINPMASK1
+					value -= sep
+					output += sep * 0b10 ^ 1
+					sep = value % VLQINPMASK2
+					value -= sep
+					output += sep * 0b10 ^ 2
+					output += value * 0b10 ^ 3
+					buffer.writeu32(buff, offset, output)
+					return target_ptr
+				end
+				local target_ptr = offset + 3
+				local output = VLQOUTMASK1
+				local sep = value % VLQINPMASK0
+				output += sep
+				value -= sep
+				sep = value % VLQINPMASK1
+				value -= sep
+				output += sep * 0b10 ^ 1
+				output += value * 0b10 ^ 2
+				buffer.writeu16(buff, offset, output)
+				offset += 2
+				output /= 2 ^ 16
+				buffer.writeu8(buff, offset, output)
+				return target_ptr
+			end
+			local target_ptr = offset + 2
+			local output = VLQOUTMASK0
+			local sep = value % VLQINPMASK0
+			value -= sep
+			output += sep
+			output += value * 0b10
+			buffer.writeu16(buff, offset, output)
+			return target_ptr
+		end
+		local target_ptr = offset + 1
+		buffer.writeu8(buff, offset, value)
+		return target_ptr
 	end,
 	des = function(buff, offset)
-		local result: number = 0
-		local shift: number = 0
-		local byte: number
+		local output = 0
 
-		repeat
-			byte = buffer.readu8(buff, offset)
+		for septet = 0, 8 do
+			local byte = buffer.readu8(buff, offset)
 			offset += 1
-			result = bit32.bor(result, bit32.lshift(bit32.band(byte, 0x7F), shift))
-			shift += 7
-		until bit32.band(byte, 0x80) == 0
 
-		return offset, result
+			local masked_byte = byte % VLQINPMASK0
+			output += masked_byte * (0b10000000 ^ septet)
+
+			if masked_byte == byte then
+				break
+			end
+		end
+
+		return offset, output
 	end,
 	size = function(value)
-		local bytes: number = 0
-
-		repeat
-			value = bit32.rshift(value, 7)
-			bytes += 1
-		until value == 0
-
-		return bytes
+		if value >= VLQINPMASK0 then
+			if value >= VLQINPMASK1 then
+				if value >= VLQINPMASK2 then
+					if value >= VLQINPMASK3 then
+						if value >= VLQINPMASK4 then
+							if value >= VLQINPMASK5 then
+								if value >= VLQINPMASK6 then
+									if value >= VLQINPMASK7 then
+										--stylua: ignore
+										error(debug.traceback(
+											`Problem converting number -> vlq bytes. Expected value < {VLQINPMASK7}`,
+											2
+										), -1)
+									end
+									return 8
+								end
+								return 7
+							end
+							return 6
+						end
+						return 5
+					end
+					return 4
+				end
+				return 3
+			end
+			return 2
+		end
+		return 1
 	end,
 }) :: ByteWorksType<number>
 
